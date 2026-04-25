@@ -1,15 +1,14 @@
 import os
 from threading import Lock
 from typing import Any
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlparse
 
 import psycopg
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, redirect, request
+from flask import Flask, request
 
 
-SMART_ID_LOGIN_URL = "https://smartid.ssu.ac.kr/Symtra_sso/smln.asp"
 U_SAINT_SSO_URL = "https://saint.ssu.ac.kr/webSSO/sso.jsp"
 U_SAINT_PORTAL_URL = "https://saint.ssu.ac.kr/webSSUMain/main_student.jsp"
 KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gDVK0oqi"
@@ -42,13 +41,6 @@ def create_app() -> Flask:
             "<p>이 페이지에는 추후 카카오 오픈채팅방 링크가 연결될 예정입니다.</p>"
             "</body></html>"
         )
-
-    @app.get("/login")
-    def login():
-        consent = parse_bool(request.args.get("consent"))
-        callback_url = build_callback_url(consent=consent)
-        query = urlencode({"apiReturnUrl": callback_url})
-        return redirect(f"{SMART_ID_LOGIN_URL}?{query}", code=302)
 
     @app.get("/auth/callback")
     @app.get("/auth/callback/<consent_token>")
@@ -118,21 +110,6 @@ def ensure_db_initialized() -> None:
 
         init_db()
         _db_initialized = True
-
-
-def build_callback_url(consent: bool = False) -> str:
-    base_url = os.environ.get("BASE_URL", "http://localhost:8000").rstrip("/")
-    if consent:
-        return f"{base_url}/auth/callback/consent-true"
-
-    return f"{base_url}/auth/callback"
-
-
-def parse_bool(value: str | None) -> bool:
-    if value is None:
-        return False
-
-    return value.strip().lower() in {"1", "true", "t", "yes", "y", "on"}
 
 
 def render_result_page(

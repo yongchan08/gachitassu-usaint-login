@@ -23,22 +23,19 @@ python app.py
 
 ## 현재 코드가 하는 일
 
-- `/login`으로 접속하면 uSaint 로그인 페이지로 리다이렉트합니다.
-- 로그인 완료 후 `/auth/callback` 또는 `/auth/callback/consent-true`에서 `sToken`, `sIdno`를 받습니다.
+- 프론트엔드가 uSaint 로그인 페이지로 직접 이동한 뒤, 로그인 완료 후 `/auth/callback` 또는 `/auth/callback/consent-true`에서 `sToken`, `sIdno`를 받습니다.
 - uSaint SSO와 포털 페이지를 다시 조회해 학생 정보를 파싱합니다.
 - 파싱한 학생 정보를 `usaint_students` 테이블에 upsert 합니다.
 - 서비스 이용 동의 여부를 `service_consent` 컬럼에 저장합니다.
-- 결과는 성공/실패 HTML 페이지로 반환합니다.
+- 결과는 성공/실패 HTML 페이지로 반환하며, 성공 시 카카오 오픈채팅방 링크로 이동할 수 있습니다.
 
 ## 환경변수
 
-- `BASE_URL`: 콜백 URL 생성에 사용할 서비스 주소
 - `DATABASE_URL`: PostgreSQL 접속 문자열. `/auth/callback`에서 학생 정보를 저장할 때 필요
 - `PORT`: 실행 포트
 
 ## 엔드포인트
 
 - `GET /`
-- `GET /login`
 - `GET /auth/callback`
 - `GET /auth/callback/consent-true`
