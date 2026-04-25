@@ -12,6 +12,7 @@ from flask import Flask, redirect, request
 SMART_ID_LOGIN_URL = "https://smartid.ssu.ac.kr/Symtra_sso/smln.asp"
 U_SAINT_SSO_URL = "https://saint.ssu.ac.kr/webSSO/sso.jsp"
 U_SAINT_PORTAL_URL = "https://saint.ssu.ac.kr/webSSUMain/main_student.jsp"
+KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gDVK0oqi"
 SUCCESS_MARKER = 'location.href = "/irj/portal";'
 class UsaintAuthError(Exception):
     pass
@@ -147,6 +148,7 @@ def render_result_page(
         else message.replace("\n", "<br>")
     )
     button_text = "카카오 오픈채팅방 입장하기" if success else "처음으로 돌아가기"
+    button_href = KAKAO_OPENCHAT_URL if success else "/"
     icon_bg = "#0A1931" if success else "#ff4757"
     icon_symbol = """
       <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
@@ -204,7 +206,7 @@ def render_result_page(
           </div>
           <p class="title">{title_text}</p>
           <p class="desc">{desc_text}</p>
-          <a class="btn" href="/">{button_text}</a>
+          <a class="btn" href="{button_href}">{button_text}</a>
         </div>
       </div>
     </body>
