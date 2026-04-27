@@ -1,4 +1,6 @@
 import os
+import time
+import uuid
 from threading import Lock
 from typing import Any
 from urllib.parse import urlparse
@@ -45,10 +47,20 @@ def create_app() -> Flask:
     @app.get("/auth/callback")
     @app.get("/auth/callback/<consent_token>")
     def auth_callback(consent_token: str | None = None):
+        callback_started_at = time.perf_counter()
         s_token = request.args.get("sToken", "").strip()
         s_idno = request.args.get("sIdno", "").strip()
+        flow_id = get_flow_id()
+        auth_started_at_ms = parse_auth_started_at_ms(request.args.get("authStartedAt"))
 
         if not s_token or not s_idno:
+            log_auth_event(
+                app,
+                flow_id,
+                "callback_missing_credentials",
+                total_elapsed_ms=elapsed_ms(callback_started_at),
+                auth_redirect_elapsed_ms=get_auth_redirect_elapsed_ms(auth_started_at_ms),
+            )
             return render_result_page(
                 title="인증 실패",
                 message="sToken 또는 sIdno가 없습니다.",
@@ -57,10 +69,22 @@ def create_app() -> Flask:
             )
 
         try:
+            fetch_started_at = time.perf_counter()
             student = fetch_student_info(s_token=s_token, s_idno=s_idno)
+            fetch_elapsed = elapsed_ms(fetch_started_at)
             student["service_consent"] = consent_token == "consent-true"
+            save_started_at = time.perf_counter()
             save_student_info(student)
+            save_elapsed = elapsed_ms(save_started_at)
         except UsaintAuthError as exc:
+            log_auth_event(
+                app,
+                flow_id,
+                "usaint_auth_failed",
+                total_elapsed_ms=elapsed_ms(callback_started_at),
+                auth_redirect_elapsed_ms=get_auth_redirect_elapsed_ms(auth_started_at_ms),
+                error=str(exc),
+            )
             return render_result_page(
                 title="인증 실패",
                 message=str(exc),
@@ -68,6 +92,14 @@ def create_app() -> Flask:
                 status_code=401,
             )
         except UsaintParseError as exc:
+            log_auth_event(
+                app,
+                flow_id,
+                "usaint_parse_failed",
+                total_elapsed_ms=elapsed_ms(callback_started_at),
+                auth_redirect_elapsed_ms=get_auth_redirect_elapsed_ms(auth_started_at_ms),
+                error=str(exc),
+            )
             return render_result_page(
                 title="정보 파싱 실패",
                 message=str(exc),
@@ -75,6 +107,14 @@ def create_app() -> Flask:
                 status_code=502,
             )
         except requests.RequestException as exc:
+            log_auth_event(
+                app,
+                flow_id,
+                "usaint_request_failed",
+                total_elapsed_ms=elapsed_ms(callback_started_at),
+                auth_redirect_elapsed_ms=get_auth_redirect_elapsed_ms(auth_started_at_ms),
+                error=str(exc),
+            )
             return render_result_page(
                 title="유세인트 요청 실패",
                 message=str(exc),
@@ -82,12 +122,33 @@ def create_app() -> Flask:
                 status_code=502,
             )
         except DatabaseError as exc:
+            log_auth_event(
+                app,
+                flow_id,
+                "db_save_failed",
+                total_elapsed_ms=elapsed_ms(callback_started_at),
+                auth_redirect_elapsed_ms=get_auth_redirect_elapsed_ms(auth_started_at_ms),
+                error=str(exc),
+            )
             return render_result_page(
                 title="DB 저장 실패",
                 message=str(exc),
                 success=False,
                 status_code=500,
             )
+
+        total_elapsed = elapsed_ms(callback_started_at)
+        auth_redirect_elapsed = get_auth_redirect_elapsed_ms(auth_started_at_ms)
+        log_auth_event(
+            app,
+            flow_id,
+            "auth_completed",
+            student_id=student["student_id"],
+            total_elapsed_ms=total_elapsed,
+            auth_redirect_elapsed_ms=auth_redirect_elapsed,
+            fetch_elapsed_ms=fetch_elapsed,
+            db_save_elapsed_ms=save_elapsed,
+        )
 
         return render_result_page(
             title="인증 완료",
@@ -190,6 +251,68 @@ def render_result_page(
     </html>
     """
     return html, status_code, {"Content-Type": "text/html; charset=utf-8"}
+
+
+def get_flow_id() -> str:
+    raw_flow_id = request.args.get("flowId", "").strip()
+    return raw_flow_id or uuid.uuid4().hex[:12]
+
+
+def parse_auth_started_at_ms(raw_value: str | None) -> int | None:
+    if raw_value is None:
+        return None
+
+    raw_value = raw_value.strip()
+    if not raw_value:
+        return None
+
+    try:
+        return int(raw_value)
+    except ValueError:
+        return None
+
+
+def elapsed_ms(started_at: float) -> int:
+    return int((time.perf_counter() - started_at) * 1000)
+
+
+def get_auth_redirect_elapsed_ms(auth_started_at_ms: int | None) -> int | None:
+    if auth_started_at_ms is None:
+        return None
+
+    now_ms = int(time.time() * 1000)
+    elapsed = now_ms - auth_started_at_ms
+    return elapsed if elapsed >= 0 else None
+
+
+def log_auth_event(
+    app: Flask,
+    flow_id: str,
+    event: str,
+    *,
+    student_id: int | None = None,
+    total_elapsed_ms: int | None = None,
+    auth_redirect_elapsed_ms: int | None = None,
+    fetch_elapsed_ms: int | None = None,
+    db_save_elapsed_ms: int | None = None,
+    error: str | None = None,
+) -> None:
+    parts = [f"event={event}", f"flow_id={flow_id}"]
+
+    if student_id is not None:
+        parts.append(f"student_id={student_id}")
+    if auth_redirect_elapsed_ms is not None:
+        parts.append(f"auth_redirect_elapsed_ms={auth_redirect_elapsed_ms}")
+    if fetch_elapsed_ms is not None:
+        parts.append(f"fetch_elapsed_ms={fetch_elapsed_ms}")
+    if db_save_elapsed_ms is not None:
+        parts.append(f"db_save_elapsed_ms={db_save_elapsed_ms}")
+    if total_elapsed_ms is not None:
+        parts.append(f"callback_total_elapsed_ms={total_elapsed_ms}")
+    if error:
+        parts.append(f'error="{error}"')
+
+    app.logger.info("usaint_auth %s", " ".join(parts))
 
 
 def get_database_url() -> str:
