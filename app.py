@@ -46,12 +46,20 @@ def create_app() -> Flask:
 
     @app.get("/auth/callback")
     @app.get("/auth/callback/<consent_token>")
-    def auth_callback(consent_token: str | None = None):
+    @app.get("/auth/callback/timing/<auth_started_at_value>/<flow_id_value>")
+    @app.get("/auth/callback/<consent_token>/timing/<auth_started_at_value>/<flow_id_value>")
+    def auth_callback(
+        consent_token: str | None = None,
+        auth_started_at_value: str | None = None,
+        flow_id_value: str | None = None,
+    ):
         callback_started_at = time.perf_counter()
         s_token = request.args.get("sToken", "").strip()
         s_idno = request.args.get("sIdno", "").strip()
-        flow_id = get_flow_id()
-        auth_started_at_ms = parse_auth_started_at_ms(request.args.get("authStartedAt"))
+        flow_id = get_flow_id(flow_id_value)
+        auth_started_at_ms = parse_auth_started_at_ms(
+            auth_started_at_value or request.args.get("authStartedAt")
+        )
 
         if not s_token or not s_idno:
             log_auth_event(
@@ -253,8 +261,8 @@ def render_result_page(
     return html, status_code, {"Content-Type": "text/html; charset=utf-8"}
 
 
-def get_flow_id() -> str:
-    raw_flow_id = request.args.get("flowId", "").strip()
+def get_flow_id(flow_id_value: str | None = None) -> str:
+    raw_flow_id = (flow_id_value or request.args.get("flowId", "")).strip()
     return raw_flow_id or uuid.uuid4().hex[:12]
 
 
