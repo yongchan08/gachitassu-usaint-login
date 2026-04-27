@@ -4,12 +4,12 @@ import time
 import uuid
 from threading import Lock
 from typing import Any
-from urllib.parse import urlparse
 
 import psycopg
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask, request
+from psycopg_pool import ConnectionPool
 
 
 U_SAINT_SSO_URL = "https://saint.ssu.ac.kr/webSSO/sso.jsp"
@@ -30,12 +30,15 @@ class DatabaseError(Exception):
 
 _db_init_lock = Lock()
 _db_initialized = False
+_db_pool_lock = Lock()
+_db_pool: ConnectionPool | None = None
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
     app.json.ensure_ascii = False
     app.logger.setLevel(logging.INFO)
+    ensure_db_initialized()
 
     @app.get("/")
     def index() -> str:
@@ -84,7 +87,7 @@ def create_app() -> Flask:
             fetch_elapsed = elapsed_ms(fetch_started_at)
             student["service_consent"] = consent_token == "consent-true"
             save_started_at = time.perf_counter()
-            save_student_info(student)
+            db_metrics = save_student_info(student)
             save_elapsed = elapsed_ms(save_started_at)
         except UsaintAuthError as exc:
             log_auth_event(
@@ -158,6 +161,9 @@ def create_app() -> Flask:
             auth_redirect_elapsed_ms=auth_redirect_elapsed,
             fetch_elapsed_ms=fetch_elapsed,
             db_save_elapsed_ms=save_elapsed,
+            db_pool_wait_elapsed_ms=db_metrics["db_pool_wait_elapsed_ms"],
+            db_query_elapsed_ms=db_metrics["db_query_elapsed_ms"],
+            db_commit_elapsed_ms=db_metrics["db_commit_elapsed_ms"],
         )
 
         return render_result_page(
@@ -305,6 +311,9 @@ def log_auth_event(
     auth_redirect_elapsed_ms: int | None = None,
     fetch_elapsed_ms: int | None = None,
     db_save_elapsed_ms: int | None = None,
+    db_pool_wait_elapsed_ms: int | None = None,
+    db_query_elapsed_ms: int | None = None,
+    db_commit_elapsed_ms: int | None = None,
     error: str | None = None,
 ) -> None:
     parts = [f"event={event}", f"flow_id={flow_id}"]
@@ -317,6 +326,12 @@ def log_auth_event(
         parts.append(f"fetch_elapsed_ms={fetch_elapsed_ms}")
     if db_save_elapsed_ms is not None:
         parts.append(f"db_save_elapsed_ms={db_save_elapsed_ms}")
+    if db_pool_wait_elapsed_ms is not None:
+        parts.append(f"db_pool_wait_elapsed_ms={db_pool_wait_elapsed_ms}")
+    if db_query_elapsed_ms is not None:
+        parts.append(f"db_query_elapsed_ms={db_query_elapsed_ms}")
+    if db_commit_elapsed_ms is not None:
+        parts.append(f"db_commit_elapsed_ms={db_commit_elapsed_ms}")
     if total_elapsed_ms is not None:
         parts.append(f"callback_total_elapsed_ms={total_elapsed_ms}")
     if error:
@@ -332,20 +347,23 @@ def get_database_url() -> str:
     return db_url
 
 
-def connect_db() -> psycopg.Connection:
-    db_url = get_database_url()
-    parsed = urlparse(db_url)
+def get_db_pool() -> ConnectionPool:
+    global _db_pool
 
-    if parsed.scheme.startswith("postgresql") and parsed.hostname in {"localhost", "127.0.0.1", "::1"}:
-        return psycopg.connect(
-            dbname=(parsed.path or "").lstrip("/"),
-            user=parsed.username,
-            password=parsed.password,
-            host=parsed.hostname or "localhost",
-            port=parsed.port or 5432,
+    if _db_pool is not None:
+        return _db_pool
+
+    with _db_pool_lock:
+        if _db_pool is not None:
+            return _db_pool
+
+        _db_pool = ConnectionPool(
+            conninfo=get_database_url(),
+            min_size=int(os.environ.get("DB_POOL_MIN_SIZE", "1")),
+            max_size=int(os.environ.get("DB_POOL_MAX_SIZE", "5")),
+            timeout=float(os.environ.get("DB_POOL_TIMEOUT_SECONDS", "10")),
         )
-
-    return psycopg.connect(db_url)
+        return _db_pool
 
 
 def init_db() -> None:
@@ -367,7 +385,7 @@ def init_db() -> None:
     """
 
     try:
-        with connect_db() as conn:
+        with get_db_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(create_table_sql)
                 cur.execute(add_consent_column_sql)
@@ -376,9 +394,7 @@ def init_db() -> None:
         raise DatabaseError(f"Failed to initialize database: {exc}") from exc
 
 
-def save_student_info(student: dict[str, Any]) -> None:
-    ensure_db_initialized()
-
+def save_student_info(student: dict[str, Any]) -> dict[str, int]:
     upsert_sql = """
     INSERT INTO usaint_students (
         student_id,
@@ -399,7 +415,10 @@ def save_student_info(student: dict[str, Any]) -> None:
     """
 
     try:
-        with connect_db() as conn:
+        pool_wait_started_at = time.perf_counter()
+        with get_db_pool().connection() as conn:
+            pool_wait_elapsed = elapsed_ms(pool_wait_started_at)
+            query_started_at = time.perf_counter()
             with conn.cursor() as cur:
                 cur.execute(
                     upsert_sql,
@@ -412,9 +431,18 @@ def save_student_info(student: dict[str, Any]) -> None:
                         student["service_consent"],
                     ),
                 )
+            query_elapsed = elapsed_ms(query_started_at)
+            commit_started_at = time.perf_counter()
             conn.commit()
+            commit_elapsed = elapsed_ms(commit_started_at)
     except psycopg.Error as exc:
         raise DatabaseError(f"Failed to save student info: {exc}") from exc
+
+    return {
+        "db_pool_wait_elapsed_ms": pool_wait_elapsed,
+        "db_query_elapsed_ms": query_elapsed,
+        "db_commit_elapsed_ms": commit_elapsed,
+    }
 
 
 def fetch_student_info(s_token: str, s_idno: str) -> dict[str, Any]:
