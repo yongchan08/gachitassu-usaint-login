@@ -34,12 +34,21 @@ python app.py
 
 - `DATABASE_URL`: PostgreSQL 접속 문자열. `/auth/callback`에서 학생 정보를 저장할 때 필요
 - `PORT`: 실행 포트
+- `WEB_CONCURRENCY`: gunicorn worker 수. 기본값 `2`
 
 ## 엔드포인트
 
 - `GET /`
 - `GET /auth/callback`
 - `GET /auth/callback/consent-true`
+
+## 배포 실행 방식
+
+Railway 배포 시 `Procfile`을 통해 아래 명령으로 실행됩니다.
+
+```bash
+gunicorn -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:${PORT:-8000} app:app
+```
 
 ## 로그
 
