@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import uuid
@@ -34,6 +35,7 @@ _db_initialized = False
 def create_app() -> Flask:
     app = Flask(__name__)
     app.json.ensure_ascii = False
+    app.logger.setLevel(logging.INFO)
 
     @app.get("/")
     def index() -> str:
