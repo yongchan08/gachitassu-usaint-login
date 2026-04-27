@@ -1,3 +1,4 @@
+import atexit
 import logging
 import os
 import time
@@ -32,6 +33,23 @@ _db_init_lock = Lock()
 _db_initialized = False
 _db_pool_lock = Lock()
 _db_pool: ConnectionPool | None = None
+
+
+def close_db_pool() -> None:
+    global _db_pool
+
+    if _db_pool is None:
+        return
+
+    with _db_pool_lock:
+        if _db_pool is None:
+            return
+
+        _db_pool.close()
+        _db_pool = None
+
+
+atexit.register(close_db_pool)
 
 
 def create_app() -> Flask:
