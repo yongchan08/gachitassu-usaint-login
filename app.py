@@ -10,6 +10,7 @@ import psycopg
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask, request
+from markupsafe import escape
 from psycopg_pool import ConnectionPool
 
 
@@ -17,6 +18,7 @@ U_SAINT_SSO_URL = "https://saint.ssu.ac.kr/webSSO/sso.jsp"
 U_SAINT_PORTAL_URL = "https://saint.ssu.ac.kr/webSSUMain/main_student.jsp"
 KAKAO_OPENCHAT_URL = "http://pf.kakao.com/_vmpjX/chat"
 SUCCESS_MARKER = 'location.href = "/irj/portal";'
+
 class UsaintAuthError(Exception):
     pass
 
@@ -60,12 +62,7 @@ def create_app() -> Flask:
 
     @app.get("/")
     def index() -> str:
-        return (
-            "<html><body>"
-            "<h1>카카오 오픈채팅방 안내</h1>"
-            "<p>이 페이지에는 추후 카카오 오픈채팅방 링크가 연결될 예정입니다.</p>"
-            "</body></html>"
-        )
+        return render_start_page()
 
     @app.get("/auth/callback")
     @app.get("/auth/callback/<consent_token>")
@@ -219,8 +216,8 @@ def render_result_page(
         if success
         else message.replace("\n", "<br>")
     )
-    button_text = "카카오 오픈채팅방 입장하기" if success else "처음으로 돌아가기"
-    button_href = KAKAO_OPENCHAT_URL if success else "/"
+    button_text = "카카오 오픈채팅방 입장하기" if success else "다시 인증하기"
+    button_href = KAKAO_OPENCHAT_URL if success else get_retry_url(message)
     icon_bg = "#0A1931" if success else "#ff4757"
     icon_symbol = """
       <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
@@ -285,6 +282,79 @@ def render_result_page(
     </html>
     """
     return html, status_code, {"Content-Type": "text/html; charset=utf-8"}
+
+
+def get_usaint_login_page_url() -> str:
+    return os.environ.get("USAINT_LOGIN_PAGE_URL", "").strip()
+
+
+def get_retry_url(message: str) -> str:
+    login_page_url = get_usaint_login_page_url()
+    if not login_page_url:
+        return "/"
+
+    retry_url = requests.PreparedRequest()
+    retry_url.prepare_url(
+        login_page_url,
+        {
+            "step": "auth",
+            "consent": "true",
+            "authError": message,
+        },
+    )
+    return retry_url.url or login_page_url
+
+
+def render_start_page():
+    login_page_url = get_usaint_login_page_url()
+    login_button = (
+        f'<a class="btn" href="{escape(login_page_url)}">유세인트 로그인하기</a>'
+        if login_page_url
+        else '<div class="notice">`USAINT_LOGIN_PAGE_URL` 환경변수를 설정하면 로그인 버튼이 활성화됩니다.</div>'
+    )
+
+    html = f"""
+    <!doctype html>
+    <html lang="ko">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>유세인트 인증 시작</title>
+      <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+      <style>
+        *{{box-sizing:border-box;margin:0;padding:0}}
+        body{{background:#1a1a1a}}
+        .wrap{{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(180deg,#0A1931 0%,#040A14 100%)}}
+        .inner{{text-align:center;max-width:360px;width:100%;animation:fade-up 0.5s ease both;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:2rem 1.5rem;box-shadow:0 18px 42px rgba(0,0,0,0.5)}}
+        @keyframes fade-up{{from{{opacity:0;transform:translateY(14px)}}to{{opacity:1;transform:translateY(0)}}}}
+        .icon-wrap{{width:80px;height:80px;border-radius:50%;background:#0A1931;display:flex;align-items:center;justify-content:center;margin:0 auto 2rem;position:relative;box-shadow:0 0 0 6px rgba(255,255,255,0.12), 0 10px 24px rgba(0,0,0,0.1)}}
+        .ring-anim{{position:absolute;inset:-6px;border-radius:50%;border:3px solid #FCDA05;animation:ring-pulse 1.1s ease-out forwards}}
+        @keyframes ring-pulse{{0%{{opacity:0.8;transform:scale(1)}}100%{{opacity:0;transform:scale(1.55)}}}}
+        .title{{font-size:1.5rem;font-weight:700;color:#ffffff;line-height:1.4;margin-bottom:1rem;letter-spacing:-0.5px}}
+        .desc{{font-size:0.9375rem;color:#d1d5db;line-height:1.8;margin-bottom:2.35rem}}
+        .btn{{display:block;width:100%;padding:16px;background:#FCDA05;color:#0A1931;border:none;border-radius:9999px;font-size:1.125rem;font-weight:700;font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;transition:opacity 0.15s;letter-spacing:-0.3px;text-decoration:none;box-shadow:0 10px 24px rgba(252,218,5,0.4)}}
+        .btn:hover{{opacity:0.85}}
+        .notice{{font-size:0.875rem;color:#d1d5db;line-height:1.7;padding:1rem;border-radius:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08)}}
+      </style>
+    </head>
+    <body>
+      <div class="wrap">
+        <div class="inner">
+          <div class="icon-wrap">
+            <div class="ring-anim"></div>
+            <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 15h14M13 20h14M13 25h9" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="title">유세인트 인증 시작</p>
+          <p class="desc">아래 버튼을 눌러 유세인트 로그인 후 본인 인증을 진행해 주세요.</p>
+          {login_button}
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
 
 
 def get_flow_id(flow_id_value: str | None = None) -> str:

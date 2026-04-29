@@ -35,6 +35,7 @@ python app.py
 ## 환경변수
 
 - `DATABASE_URL`: PostgreSQL 접속 문자열. `/auth/callback`에서 학생 정보를 저장할 때 필요
+- `USAINT_LOGIN_PAGE_URL`: `/` 시작 페이지와 실패 후 "다시 인증하기" 버튼이 이동할 `gatitashu` 프론트 URL. 실패 시 `?step=auth&consent=true&authError=...`가 자동으로 붙습니다.
 - `PORT`: 실행 포트
 - `WEB_CONCURRENCY`: gunicorn worker 수. 기본값 `2`
 - `DB_POOL_MIN_SIZE`: PostgreSQL connection pool 최소 연결 수. 기본값 `1`
