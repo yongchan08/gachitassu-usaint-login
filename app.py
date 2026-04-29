@@ -299,7 +299,6 @@ def get_retry_url(message: str) -> str:
         {
             "step": "auth",
             "consent": "true",
-            "authError": message,
         },
     )
     return retry_url.url or login_page_url
