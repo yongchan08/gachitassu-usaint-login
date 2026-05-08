@@ -212,10 +212,16 @@ def render_result_page(
 ):
     title_text = "본인 인증 완료" if success else title
     desc_text = (
-        "인증이 완료되었습니다.<br>아래 버튼을 눌러 오픈채팅방에 입장해 주세요."
+        "인증이 완료되었습니다.<br>아래 비밀번호를 확인한 뒤<br>오픈채팅방에 입장해 주세요."
         if success
         else message.replace("\n", "<br>")
     )
+    password_notice = """
+          <div class="password-card">
+            <p class="password-label">오픈채팅방 비밀번호</p>
+            <p class="password-value">5353</p>
+          </div>
+    """ if success else ""
     button_text = "카카오 오픈채팅방 입장하기" if success else "다시 인증하기"
     button_href = KAKAO_OPENCHAT_URL if success else get_retry_url(message)
     icon_bg = "#0A1931" if success else "#ff4757"
@@ -261,7 +267,10 @@ def render_result_page(
         .fail-path{{stroke:#fff;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;fill:none;stroke-dasharray:60;stroke-dashoffset:60;animation:draw 0.5s ease forwards 0.3s}}
         @keyframes draw{{to{{stroke-dashoffset:0}}}}
         .title{{font-size:1.5rem;font-weight:700;color:#ffffff;line-height:1.4;margin-bottom:1rem;letter-spacing:-0.5px}}
-        .desc{{font-size:0.875rem;color:#d1d5db;line-height:1.8;margin-bottom:2.35rem}}
+        .desc{{font-size:0.875rem;color:#d1d5db;line-height:1.8;margin-bottom:1rem}}
+        .password-card{{margin-bottom:2rem;padding:1rem 1.1rem 1.05rem;border-radius:20px;background:linear-gradient(135deg,rgba(252,218,5,0.2),rgba(252,218,5,0.08));border:1px solid rgba(252,218,5,0.45);box-shadow:0 12px 28px rgba(252,218,5,0.12)}}
+        .password-label{{font-size:0.8rem;font-weight:700;letter-spacing:0.08em;color:#FCDA05;text-transform:uppercase;margin-bottom:0.45rem}}
+        .password-value{{font-size:2rem;font-weight:800;line-height:1;color:#ffffff;letter-spacing:0.08em}}
         .btn{{display:block;width:100%;padding:16px;background:#FCDA05;color:#0A1931;border:none;border-radius:9999px;font-size:1.125rem;font-weight:700;font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;transition:opacity 0.15s;letter-spacing:-0.3px;text-decoration:none;box-shadow:0 10px 24px rgba(252,218,5,0.4)}}
         .btn:hover{{opacity:0.85}}
       </style>
@@ -275,6 +284,7 @@ def render_result_page(
           </div>
           <p class="title">{title_text}</p>
           <p class="desc">{desc_text}</p>
+          {password_notice}
           <a class="btn" href="{button_href}">{button_text}</a>
         </div>
       </div>
