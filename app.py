@@ -16,7 +16,7 @@ from psycopg_pool import ConnectionPool
 
 U_SAINT_SSO_URL = "https://saint.ssu.ac.kr/webSSO/sso.jsp"
 U_SAINT_PORTAL_URL = "https://saint.ssu.ac.kr/webSSUMain/main_student.jsp"
-KAKAO_OPENCHAT_URL = "http://pf.kakao.com/_vmpjX/chat"
+KAKAO_OPENCHAT_URL = "https://open.kakao.com/o/gNa8YUri"
 SUCCESS_MARKER = 'location.href = "/irj/portal";'
 
 class UsaintAuthError(Exception):
