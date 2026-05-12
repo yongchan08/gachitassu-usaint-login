@@ -260,7 +260,7 @@ def render_result_page(
             </div>
           </div>
     """ if success else ""
-    button_text = "송금 완료 후 다음 단계로 이동하기" if success else "다시 인증하기"
+    button_text = "송금 완료 후 오픈채팅방 입장하기" if success else "다시 인증하기"
     button_href = "/openchat" if success else get_retry_url(message)
     icon_bg = "#0A1931" if success else "#ff4757"
     icon_symbol = """
