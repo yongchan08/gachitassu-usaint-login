@@ -9,7 +9,7 @@ from typing import Any
 import psycopg
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, request
+from flask import Flask, request, send_file
 from markupsafe import escape
 from psycopg_pool import ConnectionPool
 
@@ -63,6 +63,18 @@ def create_app() -> Flask:
     @app.get("/")
     def index() -> str:
         return render_start_page()
+
+    @app.get("/openchat")
+    def openchat_page() -> str:
+        return render_openchat_page()
+
+    @app.get("/assets/copy-icon.png")
+    def copy_icon() -> Any:
+        return send_file(
+            os.path.join(app.root_path, "copy-icon.png"),
+            mimetype="image/png",
+            max_age=3600,
+        )
 
     @app.get("/auth/callback")
     @app.get("/auth/callback/<consent_token>")
@@ -212,18 +224,34 @@ def render_result_page(
 ):
     title_text = "본인 인증 완료" if success else title
     desc_text = (
-        "인증이 완료되었습니다.<br>아래 비밀번호를 확인한 뒤<br>오픈채팅방에 입장해 주세요."
+        "인증이 완료되었습니다.<br>아래 계좌로 안내된 금액을<br>송금해 주세요."
         if success
         else message.replace("\n", "<br>")
     )
-    password_notice = """
-          <div class="password-card">
-            <p class="password-label">오픈채팅방 비밀번호</p>
-            <p class="password-value">5353</p>
+    transfer_notice = """
+          <div class="account-card">
+            <p class="account-label">입금 계좌</p>
+            <div class="account-value-row">
+              <span class="account-value">카카오뱅크 79423230510</span>
+              <button type="button" class="account-copy-button" data-copy-account="카카오뱅크 79423230510" aria-label="계좌번호 복사">
+                <img class="account-copy-icon" src="/assets/copy-icon.png" alt="" />
+              </button>
+            </div>
+            <div class="account-guide-box">
+              <p class="account-guide-label">중요</p>
+              <p class="account-guide">송금자명은 반드시 학번으로 변경해 주세요.</p>
+            </div>
+            <div class="account-price">
+              <p class="account-price-original">정가 4900원</p>
+              <div class="account-price-next">
+                <span class="account-price-arrow" aria-hidden="true">⤷</span>
+                <p class="account-amount">할인가 2000원</p>
+              </div>
+            </div>
           </div>
     """ if success else ""
-    button_text = "카카오 오픈채팅방 입장하기" if success else "다시 인증하기"
-    button_href = KAKAO_OPENCHAT_URL if success else get_retry_url(message)
+    button_text = "송금 완료 후 다음 단계로 이동하기" if success else "다시 인증하기"
+    button_href = "/openchat" if success else get_retry_url(message)
     icon_bg = "#0A1931" if success else "#ff4757"
     icon_symbol = """
       <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
@@ -268,6 +296,100 @@ def render_result_page(
         @keyframes draw{{to{{stroke-dashoffset:0}}}}
         .title{{font-size:1.5rem;font-weight:700;color:#ffffff;line-height:1.4;margin-bottom:1rem;letter-spacing:-0.5px}}
         .desc{{font-size:0.875rem;color:#d1d5db;line-height:1.8;margin-bottom:1rem}}
+        .account-card{{margin-bottom:1.45rem;padding:1rem 1.1rem;border-radius:20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);box-shadow:0 12px 28px rgba(0,0,0,0.16)}}
+        .account-label{{font-size:0.8rem;font-weight:700;letter-spacing:0.08em;color:#8fb7ff;text-transform:uppercase;margin-bottom:0.55rem}}
+        .account-value-row{{display:flex;align-items:center;justify-content:flex-start;gap:0.4rem;padding:0.9rem 1rem;border-radius:16px;background:rgba(10,25,49,0.72)}}
+        .account-value{{font-size:1.25rem;font-weight:800;line-height:1.4;color:#ffffff;letter-spacing:-0.02em}}
+        .account-copy-button{{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;padding:0;border:none;border-radius:10px;background:transparent;cursor:pointer;transition:transform 0.15s ease, background 0.15s ease;flex:0 0 auto}}
+        .account-copy-button:hover{{transform:translateY(-1px);background:rgba(255,255,255,0.08)}}
+        .account-copy-icon{{width:28px;height:28px;display:block;flex:0 0 auto;filter:brightness(0) invert(1)}}
+        .account-guide-box{{margin-top:0.8rem;padding:0.85rem 0.8rem;border-radius:16px;background:rgba(252,218,5,0.14);border:1px solid rgba(252,218,5,0.42);box-shadow:0 10px 24px rgba(252,218,5,0.1)}}
+        .account-guide-label{{font-size:0.75rem;font-weight:800;letter-spacing:0.12em;color:#FCDA05;text-transform:uppercase;margin-bottom:0.35rem}}
+        .account-guide{{font-size:0.78rem;font-weight:800;line-height:1.35;color:#ffffff;letter-spacing:-0.03em;white-space:nowrap}}
+        .account-price{{margin-top:0.7rem;display:flex;flex-direction:column;align-items:center;gap:0.05rem;width:fit-content;margin-left:auto;margin-right:auto}}
+        .account-price-original{{font-size:0.9rem;font-weight:600;line-height:1.4;color:#9ca3af;text-decoration:line-through;transform:translateX(-1.5rem)}}
+        .account-price-next{{display:flex;align-items:center;justify-content:center;gap:0.35rem;margin-top:-0.05rem}}
+        .account-price-arrow{{font-size:1.15rem;font-weight:800;line-height:1;color:#d1d5db;transform:translateY(-0.35rem)}}
+        .account-amount{{font-size:1.05rem;font-weight:800;line-height:1.4;color:#FCDA05}}
+        .btn{{display:block;width:100%;padding:16px;background:#FCDA05;color:#0A1931;border:none;border-radius:9999px;font-size:1.125rem;font-weight:700;font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;transition:opacity 0.15s;letter-spacing:-0.3px;text-decoration:none;box-shadow:0 10px 24px rgba(252,218,5,0.4)}}
+        .btn:hover{{opacity:0.85}}
+        .toast{{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(16px);padding:0.85rem 1.1rem;border-radius:9999px;background:rgba(10,25,49,0.96);border:1px solid rgba(252,218,5,0.32);color:#ffffff;font-size:0.9rem;font-weight:700;line-height:1.4;box-shadow:0 16px 40px rgba(0,0,0,0.35);opacity:0;pointer-events:none;transition:opacity 0.2s ease, transform 0.2s ease}}
+        .toast.is-visible{{opacity:1;transform:translateX(-50%) translateY(0)}}
+      </style>
+    </head>
+    <body>
+      <div class="wrap">
+        <div class="inner">
+          <div class="icon-wrap">
+            <div class="ring-anim"></div>
+            {icon_symbol}
+          </div>
+          <p class="title">{title_text}</p>
+          <p class="desc">{desc_text}</p>
+          {transfer_notice}
+          <a class="btn" href="{button_href}">{button_text}</a>
+        </div>
+      </div>
+      <div class="toast" data-copy-toast aria-live="polite"></div>
+      <script>
+        const copyButton = document.querySelector('[data-copy-account]');
+        const copyToast = document.querySelector('[data-copy-toast]');
+        let copyToastTimer;
+
+        if (copyButton && copyToast) {{
+          const showToast = (message) => {{
+            copyToast.textContent = message;
+            copyToast.classList.add('is-visible');
+
+            if (copyToastTimer) {{
+              window.clearTimeout(copyToastTimer);
+            }}
+
+            copyToastTimer = window.setTimeout(() => {{
+              copyToast.classList.remove('is-visible');
+            }}, 2200);
+          }};
+
+          copyButton.addEventListener('click', async () => {{
+            const accountText = copyButton.getAttribute('data-copy-account') || '';
+
+            try {{
+              await navigator.clipboard.writeText(accountText);
+              showToast('계좌번호가 복사되었습니다.');
+            }} catch (error) {{
+              showToast('복사에 실패했습니다. 직접 길게 눌러 복사해 주세요.');
+            }}
+          }});
+        }}
+      </script>
+    </body>
+    </html>
+    """
+    return html, status_code, {"Content-Type": "text/html; charset=utf-8"}
+
+
+def render_openchat_page():
+    html = f"""
+    <!doctype html>
+    <html lang="ko">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>오픈채팅방 입장 안내</title>
+      <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+      <style>
+        *{{box-sizing:border-box;margin:0;padding:0}}
+        body{{background:#1a1a1a}}
+        .wrap{{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(180deg,#0A1931 0%,#040A14 100%)}}
+        .inner{{text-align:center;max-width:340px;width:100%;animation:fade-up 0.5s ease both;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:2rem 1.5rem;box-shadow:0 18px 42px rgba(0,0,0,0.5)}}
+        @keyframes fade-up{{from{{opacity:0;transform:translateY(14px)}}to{{opacity:1;transform:translateY(0)}}}}
+        .icon-wrap{{width:80px;height:80px;border-radius:50%;background:#0A1931;display:flex;align-items:center;justify-content:center;margin:0 auto 2rem;position:relative;box-shadow:0 0 0 6px rgba(255,255,255,0.12), 0 10px 24px rgba(0,0,0,0.1)}}
+        .ring-anim{{position:absolute;inset:-6px;border-radius:50%;border:3px solid #FCDA05;animation:ring-pulse 1.1s ease-out forwards}}
+        @keyframes ring-pulse{{0%{{opacity:0.8;transform:scale(1)}}100%{{opacity:0;transform:scale(1.55)}}}}
+        .check-path{{stroke:#fff;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;fill:none;stroke-dasharray:60;stroke-dashoffset:60;animation:draw 0.5s ease forwards 0.3s}}
+        @keyframes draw{{to{{stroke-dashoffset:0}}}}
+        .title{{font-size:1.5rem;font-weight:700;color:#ffffff;line-height:1.4;margin-bottom:1rem;letter-spacing:-0.5px}}
+        .desc{{font-size:0.875rem;color:#d1d5db;line-height:1.8;margin-bottom:1rem}}
         .password-card{{margin-bottom:2rem;padding:1rem 1.1rem 1.05rem;border-radius:20px;background:linear-gradient(135deg,rgba(252,218,5,0.2),rgba(252,218,5,0.08));border:1px solid rgba(252,218,5,0.45);box-shadow:0 12px 28px rgba(252,218,5,0.12)}}
         .password-label{{font-size:0.8rem;font-weight:700;letter-spacing:0.08em;color:#FCDA05;text-transform:uppercase;margin-bottom:0.45rem}}
         .password-value{{font-size:2rem;font-weight:800;line-height:1;color:#ffffff;letter-spacing:0.08em}}
@@ -280,18 +402,23 @@ def render_result_page(
         <div class="inner">
           <div class="icon-wrap">
             <div class="ring-anim"></div>
-            {icon_symbol}
+            <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+              <polyline class="check-path" points="10,21 17,28 30,13"/>
+            </svg>
           </div>
-          <p class="title">{title_text}</p>
-          <p class="desc">{desc_text}</p>
-          {password_notice}
-          <a class="btn" href="{button_href}">{button_text}</a>
+          <p class="title">오픈채팅방 입장 안내</p>
+          <p class="desc">아래 비밀번호를 확인한 뒤<br>카카오톡 오픈채팅방에 입장해 주세요.</p>
+          <div class="password-card">
+            <p class="password-label">오픈채팅방 비밀번호</p>
+            <p class="password-value">5353</p>
+          </div>
+          <a class="btn" href="{KAKAO_OPENCHAT_URL}">카카오 오픈채팅방 입장하기</a>
         </div>
       </div>
     </body>
     </html>
     """
-    return html, status_code, {"Content-Type": "text/html; charset=utf-8"}
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
 
 
 def get_usaint_login_page_url() -> str:
