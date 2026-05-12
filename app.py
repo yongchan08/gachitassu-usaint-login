@@ -224,7 +224,7 @@ def render_result_page(
 ):
     title_text = "본인 인증 완료" if success else title
     desc_text = (
-        "인증이 완료되었습니다.<br>아래 계좌로 안내된 금액을<br>송금해 주세요."
+        "인증이 완료되었습니다.<br><span class=\"desc-inline\">아래 계좌로 안내된 금액을 송금해 주세요.</span>"
         if success
         else message.replace("\n", "<br>")
     )
@@ -232,7 +232,13 @@ def render_result_page(
           <div class="account-card">
             <p class="account-label">입금 계좌</p>
             <div class="account-value-row">
-              <span class="account-value">카카오뱅크 79423230510</span>
+              <div class="account-value-block">
+                <div class="account-bank-row">
+                  <span class="account-bank-name">카카오뱅크</span>
+                  <span class="account-bank-name">양O원</span>
+                </div>
+                <span class="account-value">79423230510</span>
+              </div>
               <button type="button" class="account-copy-button" data-copy-account="카카오뱅크 79423230510" aria-label="계좌번호 복사">
                 <img class="account-copy-icon" src="/assets/copy-icon.png" alt="" />
               </button>
@@ -240,12 +246,16 @@ def render_result_page(
             <div class="account-guide-box">
               <p class="account-guide-label">중요</p>
               <p class="account-guide">송금자명은 반드시 학번으로 변경해 주세요.</p>
+              <p class="account-guide-example">ex) 20261234</p>
             </div>
             <div class="account-price">
               <p class="account-price-original">정가 4900원</p>
               <div class="account-price-next">
                 <span class="account-price-arrow" aria-hidden="true">⤷</span>
-                <p class="account-amount">할인가 2000원</p>
+                <div class="account-price-detail">
+                  <p class="account-amount">할인가 2000원</p>
+                  <p class="account-price-note">(서비스는 6/14까지 운영됩니다)</p>
+                </div>
               </div>
             </div>
           </div>
@@ -296,9 +306,13 @@ def render_result_page(
         @keyframes draw{{to{{stroke-dashoffset:0}}}}
         .title{{font-size:1.5rem;font-weight:700;color:#ffffff;line-height:1.4;margin-bottom:1rem;letter-spacing:-0.5px}}
         .desc{{font-size:0.875rem;color:#d1d5db;line-height:1.8;margin-bottom:1rem}}
+        .desc-inline{{white-space:nowrap}}
         .account-card{{margin-bottom:1.45rem;padding:1rem 1.1rem;border-radius:20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);box-shadow:0 12px 28px rgba(0,0,0,0.16)}}
         .account-label{{font-size:0.8rem;font-weight:700;letter-spacing:0.08em;color:#8fb7ff;text-transform:uppercase;margin-bottom:0.55rem}}
-        .account-value-row{{display:flex;align-items:center;justify-content:flex-start;gap:0.4rem;padding:0.9rem 1rem;border-radius:16px;background:rgba(10,25,49,0.72)}}
+        .account-value-row{{display:flex;align-items:center;justify-content:center;gap:0.5rem;padding:1.1rem 1rem;border-radius:16px;background:rgba(10,25,49,0.72)}}
+        .account-value-block{{display:flex;flex-direction:column;align-items:center;gap:0.2rem;text-align:center}}
+        .account-bank-row{{display:flex;align-items:center;justify-content:center;gap:0.55rem;flex-wrap:wrap}}
+        .account-bank-name{{font-size:1.25rem;font-weight:800;line-height:1.4;color:#ffffff;letter-spacing:-0.02em}}
         .account-value{{font-size:1.25rem;font-weight:800;line-height:1.4;color:#ffffff;letter-spacing:-0.02em}}
         .account-copy-button{{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;padding:0;border:none;border-radius:10px;background:transparent;cursor:pointer;transition:transform 0.15s ease, background 0.15s ease;flex:0 0 auto}}
         .account-copy-button:hover{{transform:translateY(-1px);background:rgba(255,255,255,0.08)}}
@@ -306,11 +320,14 @@ def render_result_page(
         .account-guide-box{{margin-top:0.8rem;padding:0.85rem 0.8rem;border-radius:16px;background:rgba(252,218,5,0.14);border:1px solid rgba(252,218,5,0.42);box-shadow:0 10px 24px rgba(252,218,5,0.1)}}
         .account-guide-label{{font-size:0.75rem;font-weight:800;letter-spacing:0.12em;color:#FCDA05;text-transform:uppercase;margin-bottom:0.35rem}}
         .account-guide{{font-size:0.78rem;font-weight:800;line-height:1.35;color:#ffffff;letter-spacing:-0.03em;white-space:nowrap}}
+        .account-guide-example{{margin-top:0.35rem;font-size:0.72rem;font-weight:700;line-height:1.4;color:#f5e7a1}}
         .account-price{{margin-top:0.7rem;display:flex;flex-direction:column;align-items:center;gap:0.05rem;width:fit-content;margin-left:auto;margin-right:auto}}
         .account-price-original{{font-size:0.9rem;font-weight:600;line-height:1.4;color:#9ca3af;text-decoration:line-through;transform:translateX(-1.5rem)}}
         .account-price-next{{display:flex;align-items:center;justify-content:center;gap:0.35rem;margin-top:-0.05rem}}
         .account-price-arrow{{font-size:1.15rem;font-weight:800;line-height:1;color:#d1d5db;transform:translateY(-0.35rem)}}
+        .account-price-detail{{display:flex;flex-direction:column;align-items:flex-start;gap:0.05rem}}
         .account-amount{{font-size:1.05rem;font-weight:800;line-height:1.4;color:#FCDA05}}
+        .account-price-note{{margin-top:0.36rem;font-size:0.68rem;font-weight:700;line-height:1.35;color:#9ca3af}}
         .btn{{display:block;width:100%;padding:16px;background:#FCDA05;color:#0A1931;border:none;border-radius:9999px;font-size:1.125rem;font-weight:700;font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;transition:opacity 0.15s;letter-spacing:-0.3px;text-decoration:none;box-shadow:0 10px 24px rgba(252,218,5,0.4)}}
         .btn:hover{{opacity:0.85}}
         .toast{{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(16px);padding:0.85rem 1.1rem;border-radius:9999px;background:rgba(10,25,49,0.96);border:1px solid rgba(252,218,5,0.32);color:#ffffff;font-size:0.9rem;font-weight:700;line-height:1.4;box-shadow:0 16px 40px rgba(0,0,0,0.35);opacity:0;pointer-events:none;transition:opacity 0.2s ease, transform 0.2s ease}}
