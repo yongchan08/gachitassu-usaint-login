@@ -233,11 +233,9 @@ def render_result_page(
             <p class="account-label">입금 계좌</p>
             <div class="account-value-row">
               <div class="account-value-block">
-                <div class="account-bank-row">
-                  <span class="account-bank-name">카카오뱅크</span>
-                  <span class="account-bank-name">양O원</span>
-                </div>
+                <span class="account-bank-name">카카오뱅크</span>
                 <span class="account-value">79423230510</span>
+                <span class="account-owner">예금주 양O원</span>
               </div>
               <button type="button" class="account-copy-button" data-copy-account="카카오뱅크 79423230510" aria-label="계좌번호 복사">
                 <img class="account-copy-icon" src="/assets/copy-icon.png" alt="" />
@@ -309,23 +307,23 @@ def render_result_page(
         .desc-inline{{white-space:nowrap}}
         .account-card{{margin-bottom:1.45rem;padding:1rem 1.1rem;border-radius:20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);box-shadow:0 12px 28px rgba(0,0,0,0.16)}}
         .account-label{{font-size:0.8rem;font-weight:700;letter-spacing:0.08em;color:#8fb7ff;text-transform:uppercase;margin-bottom:0.55rem}}
-        .account-value-row{{display:flex;align-items:center;justify-content:center;gap:0.5rem;padding:1.1rem 1rem;border-radius:16px;background:rgba(10,25,49,0.72)}}
+        .account-value-row{{position:relative;display:flex;align-items:center;justify-content:center;gap:0.5rem;padding:1.1rem 3.9rem 1.1rem 1rem;border-radius:16px;background:rgba(10,25,49,0.72)}}
         .account-value-block{{display:flex;flex-direction:column;align-items:center;gap:0.2rem;text-align:center}}
-        .account-bank-row{{display:flex;align-items:center;justify-content:center;gap:0.55rem;flex-wrap:wrap}}
         .account-bank-name{{font-size:1.25rem;font-weight:800;line-height:1.4;color:#ffffff;letter-spacing:-0.02em}}
         .account-value{{font-size:1.25rem;font-weight:800;line-height:1.4;color:#ffffff;letter-spacing:-0.02em}}
-        .account-copy-button{{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;padding:0;border:none;border-radius:10px;background:transparent;cursor:pointer;transition:transform 0.15s ease, background 0.15s ease;flex:0 0 auto}}
-        .account-copy-button:hover{{transform:translateY(-1px);background:rgba(255,255,255,0.08)}}
-        .account-copy-icon{{width:28px;height:28px;display:block;flex:0 0 auto;filter:brightness(0) invert(1)}}
+        .account-owner{{font-size:0.8rem;font-weight:700;line-height:1.4;color:#8fb7ff;white-space:nowrap}}
+        .account-copy-button{{position:absolute;right:0.7rem;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;padding:0;border:none;border-radius:10px;background:transparent;cursor:pointer;transition:transform 0.15s ease, background 0.15s ease;flex:0 0 auto}}
+        .account-copy-button:hover{{transform:translateY(calc(-50% - 1px));background:rgba(255,255,255,0.08)}}
+        .account-copy-icon{{width:32px;height:32px;display:block;flex:0 0 auto;filter:brightness(0) invert(1)}}
         .account-guide-box{{margin-top:0.8rem;padding:0.85rem 0.8rem;border-radius:16px;background:rgba(252,218,5,0.14);border:1px solid rgba(252,218,5,0.42);box-shadow:0 10px 24px rgba(252,218,5,0.1)}}
         .account-guide-label{{font-size:0.75rem;font-weight:800;letter-spacing:0.12em;color:#FCDA05;text-transform:uppercase;margin-bottom:0.35rem}}
         .account-guide{{font-size:0.78rem;font-weight:800;line-height:1.35;color:#ffffff;letter-spacing:-0.03em;white-space:nowrap}}
         .account-guide-example{{margin-top:0.35rem;font-size:0.72rem;font-weight:700;line-height:1.4;color:#f5e7a1}}
         .account-price{{margin-top:0.7rem;display:flex;flex-direction:column;align-items:center;gap:0.05rem;width:fit-content;margin-left:auto;margin-right:auto}}
-        .account-price-original{{font-size:0.9rem;font-weight:600;line-height:1.4;color:#9ca3af;text-decoration:line-through;transform:translateX(-1.5rem)}}
-        .account-price-next{{display:flex;align-items:center;justify-content:center;gap:0.35rem;margin-top:-0.05rem}}
-        .account-price-arrow{{font-size:1.15rem;font-weight:800;line-height:1;color:#d1d5db;transform:translateY(-0.35rem)}}
-        .account-price-detail{{display:flex;flex-direction:column;align-items:flex-start;gap:0.05rem}}
+        .account-price-original{{align-self:flex-start;font-size:0.9rem;font-weight:600;line-height:1.4;color:#9ca3af;text-decoration:line-through;transform:translateX(-1.75rem)}}
+        .account-price-next{{position:relative;display:flex;align-items:flex-start;justify-content:center;margin-top:-0.05rem}}
+        .account-price-arrow{{position:absolute;left:-0.65rem;top:0.02rem;font-size:1.15rem;font-weight:800;line-height:1;color:#d1d5db}}
+        .account-price-detail{{display:flex;flex-direction:column;align-items:center;gap:0.05rem;text-align:center}}
         .account-amount{{font-size:1.05rem;font-weight:800;line-height:1.4;color:#FCDA05}}
         .account-price-note{{margin-top:0.36rem;font-size:0.68rem;font-weight:700;line-height:1.35;color:#9ca3af}}
         .btn{{display:block;width:100%;padding:16px;background:#FCDA05;color:#0A1931;border:none;border-radius:9999px;font-size:1.125rem;font-weight:700;font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;transition:opacity 0.15s;letter-spacing:-0.3px;text-decoration:none;box-shadow:0 10px 24px rgba(252,218,5,0.4)}}
